@@ -37,3 +37,8 @@ build/
 
 ### Mac OS ###
 .DS_Store
+### Benchmark outputs ###
+results/
+received/
+data.bin
+__pycache__/
