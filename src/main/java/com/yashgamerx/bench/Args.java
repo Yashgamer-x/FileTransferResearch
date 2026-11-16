@@ -62,6 +62,12 @@ public final class Args {
         if (has("fec")) c.fecGroup = getInt("fec", c.fecGroup);
         if (has("tsunami-update")) c.tsunamiUpdateMs = getInt("tsunami-update", c.tsunamiUpdateMs);
         if (has("tsunami-threshold")) c.tsunamiErrorThreshold = Double.parseDouble(get("tsunami-threshold", null));
+        if (has("cc-window")) c.ccMaxWindow = getInt("cc-window", c.ccMaxWindow);
+        if (has("hybla-rtt0")) c.hyblaRtt0Ms = getInt("hybla-rtt0", c.hyblaRtt0Ms);
+        if (has("ledbat-target")) c.ledbatTargetMs = getInt("ledbat-target", c.ledbatTargetMs);
+        if (has("rs-parity")) c.rsParity = getInt("rs-parity", c.rsParity);
+        if (has("lt-c")) c.ltC = Double.parseDouble(get("lt-c", null));
+        if (has("lt-delta")) c.ltDelta = Double.parseDouble(get("lt-delta", null));
         if (has("blast-idle")) c.blastIdleMs = getInt("blast-idle", c.blastIdleMs);
         if (has("rbudp-quiet")) c.rbudpQuietMs = getInt("rbudp-quiet", c.rbudpQuietMs);
         return c;
@@ -80,7 +86,10 @@ public final class Args {
                 --min-rto 10          min RTO ms                      --init-rto 1000  initial RTO ms
                 --tcp-buffer 4M       TCP socket buffers (also the emulated TCP window)
                 --udp-buffer 16M      UDP socket buffers
-                --streams 4           tcp-parallel connections        --fec 16  rbudp-fec group size
+                --streams 4           tcp-parallel connections        --fec 16  FEC group size (rbudp-fec/rs)
+                --rs-parity 2         Reed-Solomon parity per group   --lt-c 0.03 --lt-delta 0.5  LT soliton
+                --hybla-rtt0 25       Hybla reference RTT ms          --ledbat-target 25  LEDBAT target ms
+                --cc-window 8192      receive-window cap for sr-aimd/hybla/ledbat
                 --tsunami-update 20   Tsunami feedback period ms      --tsunami-threshold 0.075
                 --blast-idle 1000     udp-blast idle give-up ms       --rbudp-quiet 10  RBUDP quiet wait ms
             """;

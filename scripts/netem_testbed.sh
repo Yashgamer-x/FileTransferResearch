@@ -14,8 +14,8 @@ JAR=${JAR:-target/ftp-bench.jar}
 TRIALS=${TRIALS:-5}
 SIZE=${SIZE:-10MB}
 OUT=${OUT:-results/netem}
-PROTOCOLS=${PROTOCOLS:-"tcp-stream tcp-nio tcp-parallel udp-blast rbudp rbudp-fec tsunami udp-saw udp-gbn udp-sr udp-sr-aimd"}
-TCP_CC=${TCP_CC:-cubic}           # e.g. cubic, reno, bbr (if the module is available)
+PROTOCOLS=${PROTOCOLS:-"tcp-stream tcp-nio tcp-parallel udp-blast rbudp rbudp-fec rbudp-rs lt-fountain tsunami udp-saw udp-gbn udp-sr udp-sr-aimd udp-sr-hybla udp-sr-ledbat"}
+TCP_CC=${TCP_CC:-cubic}           # e.g. cubic, reno, bbr, hybla (kernel TCP Hybla), if the module is available
 PORT=9000
 # name  rate(Mbit)  rtt(ms)  loss(%)  jitter(ms)
 SCENARIOS=${SCENARIOS:-"

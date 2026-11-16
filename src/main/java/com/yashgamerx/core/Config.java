@@ -11,6 +11,18 @@ public final class Config implements Cloneable {
     public long udpRateBps = 0;
     /** Maximum sliding window (packets) for the ARQ protocols. */
     public int window = 512;
+    /** Receive-window cap for the congestion-controlled ARQ variants (cwnd is the real limit). */
+    public int ccMaxWindow = 8192;
+    /** TCP Hybla reference RTT0 in ms (Caini and Firrincieli use 25 ms). */
+    public int hyblaRtt0Ms = 25;
+    /** LEDBAT target queuing delay in ms (RFC 6817: TARGET must not exceed 100 ms). */
+    public int ledbatTargetMs = 25;
+    /** Reed-Solomon parity shards per fecGroup data shards (rbudp-rs). */
+    public int rsParity = 2;
+    /** LT robust-soliton parameters (Luby 2002): c and failure probability delta. */
+    public double ltC = 0.03, ltDelta = 0.5;
+    /** Maximum LT symbols as a multiple of the source chunk count before the sender gives up. */
+    public double ltMaxOverhead = 3.0;
     /** Initial congestion window (packets) for AIMD, per RFC 6928. */
     public int initialCwnd = 10;
     /** Retransmission-timeout bounds (RFC 6298 uses a 1 s minimum; lowered so LAN scenarios are meaningful). */
@@ -49,6 +61,8 @@ public final class Config implements Cloneable {
                 + " tcpBuffer=" + tcpBufferBytes + " udpBuffer=" + udpBufferBytes
                 + " parallelStreams=" + parallelStreams + " fecGroup=" + fecGroup
                 + " tsunamiUpdateMs=" + tsunamiUpdateMs + " tsunamiErrorThreshold=" + tsunamiErrorThreshold
+                + " ccMaxWindow=" + ccMaxWindow + " hyblaRtt0Ms=" + hyblaRtt0Ms + " ledbatTargetMs=" + ledbatTargetMs
+                + " rsParity=" + rsParity + " ltC=" + ltC + " ltDelta=" + ltDelta
                 + " blastIdleMs=" + blastIdleMs + " rbudpQuietMs=" + rbudpQuietMs;
     }
 }

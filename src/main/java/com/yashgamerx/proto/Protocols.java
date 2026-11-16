@@ -16,13 +16,17 @@ public final class Protocols {
                 new TcpNioProtocol(),
                 new TcpParallelProtocol(),
                 new UdpBlastProtocol(),
-                new RbudpProtocol(false),
-                new RbudpProtocol(true),
+                new RbudpProtocol(RbudpProtocol.Fec.NONE),
+                new RbudpProtocol(RbudpProtocol.Fec.XOR),
+                new RbudpProtocol(RbudpProtocol.Fec.RS),
+                new LtFountainProtocol(),
                 new TsunamiProtocol(),
                 new ArqProtocol(ArqProtocol.Mode.SAW),
                 new ArqProtocol(ArqProtocol.Mode.GBN),
                 new ArqProtocol(ArqProtocol.Mode.SR),
-                new ArqProtocol(ArqProtocol.Mode.SR_AIMD))) {
+                new ArqProtocol(ArqProtocol.Mode.SR_AIMD),
+                new ArqProtocol(ArqProtocol.Mode.SR_HYBLA),
+                new ArqProtocol(ArqProtocol.Mode.SR_LEDBAT))) {
             ALL.put(p.name(), p);
         }
     }

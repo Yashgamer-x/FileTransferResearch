@@ -1,6 +1,6 @@
 # File Transfer Protocol Research Benchmark
 
-A single Java 25 program that contains **11 bulk file-transfer protocols**, an **in-process network
+A single Java 25 program that contains **15 bulk file-transfer protocols**, an **in-process network
 emulator**, and a **benchmark harness** that produces raw data, summary statistics (mean ± 95% CI),
 ranked Markdown tables, IEEE-ready LaTeX tables and (via a script) publication figures.
 
@@ -22,11 +22,20 @@ java -jar target/ftp-bench.jar bench --suite quick
 | `udp-blast` | UDP | Reference 2 | Paced raw UDP, **no reliability**: upper bound on speed, lower bound on correctness. |
 | `rbudp` | TCP+UDP | Hybrid 3 | Reliable Blast UDP: UDP blast rounds, missing-chunk bitmap over TCP, repeat. |
 | `rbudp-fec` | TCP+UDP | Hybrid 3 + FEC | RBUDP + first-round XOR parity (1 per k chunks) to repair single losses without a round. |
+| `rbudp-rs` | TCP+UDP | Hybrid 3 + FEC | RBUDP + first-round **Reed–Solomon** parity (Cauchy RS over GF(2⁸), m per k chunks, default 2 per 16); repairs any m losses per group. |
+| `lt-fountain` | TCP+UDP | Fountain code | **LT code** (robust soliton, peeling decoder). Rateless: streams new coded symbols until the receiver decodes, never retransmits. |
 | `tsunami` | TCP+UDP | Hybrid 3 | Tsunami-style: continuous rate-based UDP stream, periodic NAKs + loss-rate feedback, multiplicative rate adaptation. |
 | `udp-saw` | UDP | Classic ARQ | Stop-and-Wait (window 1), i.e. TFTP-like behaviour. |
 | `udp-gbn` | UDP | Classic ARQ | Go-Back-N: cumulative ACKs, single timer, whole-window resend. |
 | `udp-sr` | UDP | Classic ARQ | Selective Repeat: SACK + cumulative ACK, per-packet timers, fast retransmit (3 later ACKs). |
 | `udp-sr-aimd` | UDP | ARQ + CC | Selective Repeat + Reno-style AIMD (IW10, slow start, halve once per window, cwnd=1 on RTO). |
+| `udp-sr-hybla` | UDP | ARQ + CC | Selective Repeat + **TCP Hybla**: growth normalised to RTT0 = 25 ms (ρ = RTT/RTT0; slow start +2^ρ−1, avoidance +ρ²/cwnd per ACK). Built for long-RTT/satellite paths. |
+| `udp-sr-ledbat` | UDP | ARQ + CC | Selective Repeat + **LEDBAT** (RFC 6817): delay-based scavenger, grows only while queuing delay < TARGET (25 ms), INIT_CWND 2. Uses RTT − minRTT instead of one-way delay. |
+
+Hybla and LEDBAT are implemented as congestion controllers on the Selective Repeat engine, so they
+can run on Windows and in the simulator. They are not kernel TCP modules. For real kernel TCP Hybla,
+run the netem testbed with `TCP_CC=hybla`. LEDBAT is designed to yield to competing traffic, but the
+harness runs one flow at a time, so these results only show its single-flow throughput.
 
 All ARQ variants use the RFC 6298 retransmission timer with Karn's rule. Backoff is cleared when
 new data is acknowledged, as Linux does.
@@ -163,8 +172,9 @@ python scripts/plot_results.py results/<timestamp>
 
 ## 4. Other algorithms worth adding to the study
 
-Already implemented above: TCP (streams, zero-copy, parallel), raw UDP, RBUDP, RBUDP+FEC, Tsunami,
-Stop-and-Wait, Go-Back-N, Selective Repeat, and Selective Repeat with AIMD.
+Already implemented above: TCP (streams, zero-copy, parallel), raw UDP, RBUDP, RBUDP with XOR FEC,
+RBUDP with Reed–Solomon FEC, LT fountain code, Tsunami, Stop-and-Wait, Go-Back-N, Selective Repeat,
+and Selective Repeat with Reno AIMD, Hybla or LEDBAT.
 
 Candidates to add next, roughly in order of research value:
 
@@ -173,12 +183,10 @@ Candidates to add next, roughly in order of research value:
 | **UDT** (Gu & Grossman 2007) | The best-known reliable-UDP protocol for high-BDP paths (DAIMD rate control + NAK). | Implement its rate control in `ArqProtocol`/Tsunami style, or use the C++ library via JNI. |
 | **QUIC** (RFC 9000) with CUBIC/BBR | The modern standard for reliable transport over UDP. | Java libraries such as *kwik* or *netty-incubator-codec-quic*. |
 | **TCP CUBIC vs BBR vs Reno** (RFC 9438; Cardwell 2016) | Shows how much depends on the congestion controller. | netem testbed: `TCP_CC=bbr` / `reno` / `cubic`. |
-| **Fountain codes** (LT, Luby 2002; RaptorQ RFC 6330) | Rateless FEC with no retransmission rounds; the natural next step after `rbudp-fec`. | Replace XOR parity with an LT/RaptorQ encoder (e.g. OpenRQ). |
-| **Reed–Solomon FEC** (Rizzo 1997) | Repairs several losses per group, unlike XOR. | Swap the parity routine. |
+| **RaptorQ** (RFC 6330) | A fountain code with much lower overhead and decoding failure rate than LT. | e.g. OpenRQ, as a drop-in alternative to `lt-fountain`. |
 | **PCC / PCC-Vivace** (Dong 2015/2018) | Learning-based rate control that handles random loss well. | Utility-based rate controller on top of Tsunami's data path. |
-| **TCP Hybla** (Caini 2004) | Designed for satellite RTTs. | netem testbed, `TCP_CC=hybla`. |
 | **SCTP** (RFC 9260) / **MPTCP** (RFC 8684) | Multi-streaming and multipath transport. | Kernel support on Linux; JDK has `com.sun.nio.sctp` on Linux. |
-| **LEDBAT** (RFC 6817) | Background transfer that gives way to other traffic. | Delay-based window on top of `udp-sr`. |
+| **Competing-flow experiments** | LEDBAT's goal is to yield to other traffic; fairness (Jain index) needs two flows on one bottleneck. | Run two transfers through one emulated link. |
 | **GridFTP** (Allcock 2005) / **Aspera FASP** | Production reference points. | Run the real tools on the netem testbed (FASP is proprietary). |
 
 ---
@@ -208,6 +216,11 @@ Candidates to add next, roughly in order of research value:
 [21] K. Sollins, "The TFTP protocol (revision 2)," IETF RFC 1350, 1992.
 [22] R. Jain, *The Art of Computer Systems Performance Analysis*. New York, NY, USA: Wiley, 1991.
 [23] T. Hoefler and R. Belli, "Scientific benchmarking of parallel computing systems," in *Proc. ACM/IEEE SC*, 2015.
+[24] C. Caini and R. Firrincieli, "TCP Hybla: A TCP enhancement for heterogeneous networks," *Int. J. Satellite Commun. Netw.*, vol. 22, no. 5, pp. 547–566, 2004.
+[25] S. Shalunov, G. Hazel, J. Iyengar, and M. Kuehlewind, "Low Extra Delay Background Transport (LEDBAT)," IETF RFC 6817, 2012.
+[26] J. W. Byers, M. Luby, M. Mitzenmacher, and A. Rege, "A digital fountain approach to reliable distribution of bulk data," in *Proc. ACM SIGCOMM*, 1998.
+[27] J. Blömer, M. Kalfane, R. Karp, M. Karpinski, M. Luby, and D. Zuckerman, "An XOR-based erasure-resilient coding scheme," ICSI Tech. Rep. TR-95-048, 1995.
+[28] J. S. Plank, "Optimizing Cauchy Reed-Solomon codes for fault-tolerant storage applications," Univ. Tennessee, Tech. Rep. CS-05-569, 2005.
 
 Check every reference against the publisher's record before you submit.
 
@@ -217,7 +230,8 @@ Check every reference against the publisher's record before you submit.
 ```
 core/   Protocol API, Config, TransferStats, mmap Source/SinkFile, Pacer, RFC 6298 RttEstimator
 emu/    Link (rate+queue+delay+loss), LossModel (Bernoulli, Gilbert-Elliott), UdpProxy, TcpProxy, Scenario
-proto/  the 11 protocols + registry
+proto/  the 15 protocols + registry
+fec/    ReedSolomon (Cauchy, GF(2^8)) and LtCode (robust soliton)
 bench/  BenchRunner (factorial experiment), TrialRunner, Stats (t-CI), Summary (csv/md/tex), Remote (two-host)
 scripts/plot_results.py   IEEE figures + Welch tests      scripts/netem_testbed.sh   Linux kernel testbed
 ```
